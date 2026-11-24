@@ -20,15 +20,15 @@ export default function App() {
       <View style={s.toolbar}>
         <TouchableOpacity onPress={() => setScene(null)}><Text style={s.action}>← Back</Text></TouchableOpacity>
         <Text style={s.name} numberOfLines={1}>{scene.name}</Text>
-        <TouchableOpacity onPress={open}><Text style={s.action}>Open</Text></TouchableOpacity>
+        <TouchableOpacity disabled={busy} onPress={open}><Text style={s.action}>Browse</Text></TouchableOpacity>
       </View>
-      <Viewer scene={scene}/>
+      <Viewer key={scene.uri} scene={scene}/>
     </> : <View style={s.home}>
       <Text style={s.symbol}>◈</Text>
       <Text style={s.headline}>Explore your 3D captures</Text>
       <Text style={s.subtitle}>Gaussian PLY · Point cloud PLY · SPLAT</Text>
       <TouchableOpacity style={s.button} disabled={busy} onPress={open}>
-        <Text style={s.buttonLabel}>{busy ? "Importing…" : "Open 3D file"}</Text>
+        <Text style={s.buttonLabel}>{busy ? "Importing…" : "Browse 3D file"}</Text>
       </TouchableOpacity>
       <Text style={s.hint}>Drag to rotate · Pinch to zoom · Two fingers to pan</Text>
     </View>}

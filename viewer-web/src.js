@@ -4,7 +4,15 @@ import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
 import * as Splat3D from "@mkkellogg/gaussian-splats-3d";
 
 const element = document.getElementById("app");
-const post = (type, message) => window.ReactNativeWebView?.postMessage(JSON.stringify({type,message}));
+const input = document.getElementById("scene-file");
+const status = document.getElementById("status");
+const toolbar = document.getElementById("toolbar");
+if (window.ReactNativeWebView) toolbar.hidden = true;
+const post = (type, message) => {
+  window.ReactNativeWebView?.postMessage(JSON.stringify({type,message}));
+  status.textContent = message;
+  status.setAttribute("role", type === "error" ? "alert" : "status");
+};
 let disposer = null;
 
 function isGaussianPly(buffer) {
@@ -52,9 +60,14 @@ async function load(data) {
   try {
     post("status","Decoding scene…");
     if(disposer){disposer();disposer=null;}
-    const raw=atob(data.base64), bytes=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-    const buffer=bytes.buffer;
+    let buffer = data.buffer;
+    if (!buffer) {
+      const raw=atob(data.base64), bytes=new Uint8Array(raw.length);
+      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+      buffer=bytes.buffer;
+    }
+    if (!buffer.byteLength) throw new Error("The selected file is empty.");
+    if (data.format === "splat" && buffer.byteLength % 32 !== 0) throw new Error("Invalid SPLAT record length.");
     const gaussian=data.format === "splat" || isGaussianPly(buffer);
     if(gaussian){
       const blob=new Blob([buffer],{type:"application/octet-stream"});
@@ -72,4 +85,20 @@ async function load(data) {
 window.addEventListener("message",event=>{
   try{const data=JSON.parse(event.data);if(data.type==="load")load(data);}catch{}
 });
-post("boot","ready");
+input.addEventListener("change", async () => {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.disabled = true;
+  try {
+    const format = file.name.split(".").pop()?.toLowerCase();
+    if (format !== "ply" && format !== "splat") throw new Error("Choose a .ply or .splat file.");
+    post("status", "Reading " + file.name + "…");
+    await load({format, buffer: await file.arrayBuffer()});
+  } catch (error) {
+    post("error", error?.message ?? String(error));
+  } finally {
+    input.value = "";
+    input.disabled = false;
+  }
+});
+if (window.ReactNativeWebView) post("boot","ready");
