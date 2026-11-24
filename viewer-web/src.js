@@ -14,6 +14,35 @@ const post = (type, message) => {
   status.setAttribute("role", type === "error" ? "alert" : "status");
 };
 let disposer = null;
+const models = document.getElementById("models");
+const resourceBase = new URL("./resources/", document.baseURI);
+async function initLibrary() {
+  try {
+    const response = await fetch(new URL("manifest.json", resourceBase));
+    if (!response.ok) throw new Error("Resource manifest unavailable");
+    const entries = await response.json();
+    for (const entry of entries) {
+      const option = document.createElement("option");
+      option.value = entry.name;
+      option.textContent = entry.name + " (" + (entry.size / 1048576).toFixed(1) + " MiB)";
+      models.append(option);
+    }
+    if (!entries.length) models.options[0].textContent = "No bundled models yet";
+  } catch (error) { models.options[0].textContent = "Library unavailable"; }
+}
+models.addEventListener("change", async () => {
+  const name = models.value;
+  if (!name) return;
+  models.disabled = input.disabled = true;
+  try {
+    post("status", "Loading " + name + "…");
+    const response = await fetch(new URL(encodeURIComponent(name), resourceBase));
+    if (!response.ok) throw new Error("Resource unavailable: " + name);
+    await load({format: name.split(".").pop().toLowerCase(), buffer: await response.arrayBuffer()});
+  } catch (error) { post("error", error.message); }
+  finally { models.disabled = input.disabled = false; models.value = ""; }
+});
+if (!window.ReactNativeWebView) initLibrary();
 
 function isGaussianPly(buffer) {
   const header = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 16384)));
@@ -88,7 +117,7 @@ window.addEventListener("message",event=>{
 input.addEventListener("change", async () => {
   const file = input.files?.[0];
   if (!file) return;
-  input.disabled = true;
+  input.disabled = models.disabled = true;
   try {
     const format = file.name.split(".").pop()?.toLowerCase();
     if (format !== "ply" && format !== "splat") throw new Error("Choose a .ply or .splat file.");
@@ -98,7 +127,7 @@ input.addEventListener("change", async () => {
     post("error", error?.message ?? String(error));
   } finally {
     input.value = "";
-    input.disabled = false;
+    input.disabled = models.disabled = false;
   }
 });
 if (window.ReactNativeWebView) post("boot","ready");

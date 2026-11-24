@@ -1,0 +1,1 @@
+Place .ply and .splat models here. Run npm run dev or npm run build from viewer-web to regenerate the manifest. The browser library loads these files without base64. The eight uploaded binary models are not included in this commit.

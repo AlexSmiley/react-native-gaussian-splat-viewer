@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "prebuild": "node scripts/generate-manifest.mjs",
+    "dev": "node scripts/generate-manifest.mjs && vite"
   },
   "dependencies": {
     "@mkkellogg/gaussian-splats-3d": "^0.4.7",
