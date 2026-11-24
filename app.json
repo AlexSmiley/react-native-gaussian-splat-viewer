@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Gaussian Splat Viewer",
+    "slug": "gaussian-splat-viewer",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
+      }
+    },
+    "android": {
+      "package": "com.alexsmiley.gaussiansplatviewer"
+    },
+    "plugins": [
+      "expo-document-picker"
+    ]
+  }
+}

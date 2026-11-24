@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+android/
+ios/
+viewer-web/node_modules/
+viewer-web/dist/
+*.log
