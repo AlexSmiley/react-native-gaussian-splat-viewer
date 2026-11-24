@@ -2,6 +2,12 @@
 
 Android/iOS 3D file viewer using **React Native, Expo, Three.js and GaussianSplats3D**.
 
+## Live web demo
+
+**Vercel:** [Open Gaussian Splat Viewer](https://react-native-gaussian-splat-viewer.vercel.app)
+
+Use the Model library dropdown to select a bundled PLY model, or Browse to open a local PLY/SPLAT file. Switching bundled models refreshes the viewer and loads the selected model automatically. Rendering takes place in the browser; local files are not uploaded.
+
 ## Supported imports
 
 | Format | Renderer |
@@ -56,6 +62,9 @@ GitHub Actions runs these checks on every push and PR. Actual device rendering m
 - Bundled WebView assets may need platform-specific adjustments depending on React Native WebView and Metro versions; run device tests.
 
 ## Deployment
+
+Web: Vercel (Vite), root directory `viewer-web`, build command `npm run build`, output directory `dist`. The build regenerates the resource manifest from `viewer-web/public/resources/`.
+
 
 Android: build APK/AAB using Gradle after `expo prebuild` or EAS Build.
 iOS: build with Xcode or EAS Build on supported macOS runner.
