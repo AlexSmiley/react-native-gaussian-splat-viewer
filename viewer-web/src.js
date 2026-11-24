@@ -21,6 +21,7 @@ async function initLibrary() {
     const response = await fetch(new URL("manifest.json", resourceBase));
     if (!response.ok) throw new Error("Resource manifest unavailable");
     const entries = await response.json();
+    if (!Array.isArray(entries)) throw new Error("Invalid resource manifest");
     for (const entry of entries) {
       const option = document.createElement("option");
       option.value = entry.name;
@@ -38,7 +39,8 @@ models.addEventListener("change", async () => {
     post("status", "Loading " + name + "…");
     const response = await fetch(new URL(encodeURIComponent(name), resourceBase));
     if (!response.ok) throw new Error("Resource unavailable: " + name);
-    await load({format: name.split(".").pop().toLowerCase(), buffer: await response.arrayBuffer()});
+    const buffer = await response.arrayBuffer();
+    await load({format: name.split(".").pop().toLowerCase(), buffer, name});
   } catch (error) { post("error", error.message); }
   finally { models.disabled = input.disabled = false; models.value = ""; }
 });
@@ -96,6 +98,7 @@ async function load(data) {
       buffer=bytes.buffer;
     }
     if (!buffer.byteLength) throw new Error("The selected file is empty.");
+    if (data.format === "ply" && !/^ply\r?\n/.test(new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(128, buffer.byteLength))))) throw new Error("Invalid PLY file or missing Git LFS content.");
     if (data.format === "splat" && buffer.byteLength % 32 !== 0) throw new Error("Invalid SPLAT record length.");
     const gaussian=data.format === "splat" || isGaussianPly(buffer);
     if(gaussian){
@@ -107,7 +110,7 @@ async function load(data) {
       post("status","Rendering point cloud…");
       await loadPointCloud(new Blob([buffer]));
     }
-    post("ready","Ready");
+    post("ready", data.name ? "Loaded " + data.name : "Ready");
   }catch(error){post("error",error?.message ?? String(error));}
   finally{if(url)URL.revokeObjectURL(url);}
 }
