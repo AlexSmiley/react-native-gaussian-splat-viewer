@@ -31,20 +31,27 @@ async function initLibrary() {
     if (!entries.length) models.options[0].textContent = "No bundled models yet";
   } catch (error) { models.options[0].textContent = "Library unavailable"; }
 }
-models.addEventListener("change", async () => {
-  const name = models.value;
-  if (!name) return;
+// A fresh document per library selection releases the old WebGL context and workers.
+models.addEventListener("change", () => {
+  if (!models.value) return;
+  const next = new URL(location.href);
+  next.searchParams.set("model", models.value);
+  location.assign(next.href);
+});
+async function bootLibrary() {
+  await initLibrary();
+  const name = new URL(location.href).searchParams.get("model");
+  if (!name || !Array.from(models.options).some(option => option.value === name)) return;
+  models.value = name;
   models.disabled = input.disabled = true;
   try {
     post("status", "Loading " + name + "…");
     const response = await fetch(new URL(encodeURIComponent(name), resourceBase));
     if (!response.ok) throw new Error("Resource unavailable: " + name);
-    const buffer = await response.arrayBuffer();
-    await load({format: name.split(".").pop().toLowerCase(), buffer, name});
+    await load({format: name.split(".").pop().toLowerCase(), buffer: await response.arrayBuffer(), name});
   } catch (error) { post("error", error.message); }
-  finally { models.disabled = input.disabled = false; models.value = ""; }
-});
-if (!window.ReactNativeWebView) initLibrary();
+  finally { models.disabled = input.disabled = false; }
+}
 
 function isGaussianPly(buffer) {
   const header = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 16384)));
@@ -75,22 +82,24 @@ async function loadPointCloud(blob) {
   addEventListener("resize",resize);
   const draw=()=>{ if(!active)return; controls.update(); renderer.render(scene,camera);requestAnimationFrame(draw); };
   draw();
-  disposer=()=>{ active=false;removeEventListener("resize",resize);controls.dispose();geometry.dispose();material.dispose();renderer.dispose();element.replaceChildren(); };
+  disposer=()=>{ active=false;removeEventListener("resize",resize);controls.dispose();geometry.dispose();material.dispose();renderer.dispose();renderer.forceContextLoss();element.replaceChildren(); };
 }
 async function loadGaussian(url, format) {
   const viewer = new Splat3D.Viewer({
     rootElement:element,sharedMemoryForWorkers:false,gpuAcceleratedSort:false,
     cameraUp:[0,-1,0],initialCameraPosition:[0,0,5],initialCameraLookAt:[0,0,0]
   });
+  try {
   await viewer.addSplatScene(url,{format: format === "ply" ? Splat3D.SceneFormat.Ply : Splat3D.SceneFormat.Splat,progressiveLoad:false,showLoadingUI:true});
   viewer.start();
-  disposer=()=>{viewer.stop();viewer.dispose();};
+  disposer=async()=>{await viewer.dispose();};
+  } catch (error) { await viewer.dispose(); throw error; }
 }
 async function load(data) {
   let url;
   try {
     post("status","Decoding scene…");
-    if(disposer){disposer();disposer=null;}
+    if(disposer){const cleanup = disposer; disposer=null; await cleanup(); element.replaceChildren();}
     let buffer = data.buffer;
     if (!buffer) {
       const raw=atob(data.base64), bytes=new Uint8Array(raw.length);
@@ -125,7 +134,11 @@ input.addEventListener("change", async () => {
     const format = file.name.split(".").pop()?.toLowerCase();
     if (format !== "ply" && format !== "splat") throw new Error("Choose a .ply or .splat file.");
     post("status", "Reading " + file.name + "…");
-    await load({format, buffer: await file.arrayBuffer()});
+    await load({format, buffer: await file.arrayBuffer(), name: file.name});
+    models.value = "";
+    const next = new URL(location.href);
+    next.searchParams.delete("model");
+    history.replaceState(null, "", next.href);
   } catch (error) {
     post("error", error?.message ?? String(error));
   } finally {
@@ -134,3 +147,4 @@ input.addEventListener("change", async () => {
   }
 });
 if (window.ReactNativeWebView) post("boot","ready");
+else bootLibrary();
